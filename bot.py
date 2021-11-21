@@ -24,6 +24,8 @@ async def hello(ctx):
 # Command to sign up to the "service"
 @bot.command(name="signup", description="Sign up to the bot")
 async def signup(ctx, *args):
+    if ctx.message.guild:
+        return await ctx.author.send(embed=discord.Embed(title="Error", description="Please only use the signup command in private", color=discord.Color.LIGHT_RED))
     if len(args) < 3:
         embed = discord.Embed(
             title="Error, not enough arguments", description=f"Please provide your schoolname, username and password, usage: !signup <schoolname> <username> <password>", color=discord.Color.dark_red())
@@ -41,3 +43,8 @@ async def signup(ctx, *args):
     embed = discord.Embed(
         title="New signup", description=f"Hi thank you for signing up for this service. The bot will try to log into Zermelo, please wait a moment...", color=discord.Color.red())
     await ctx.author.send(embed=embed)
+    # print(ctx.history)
+    messages = await ctx.channel.history(limit=200).flatten()
+    for msg in messages:
+        if msg.author.id != bot.user.id:
+            print(msg.content)
