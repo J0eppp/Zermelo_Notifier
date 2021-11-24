@@ -1,5 +1,19 @@
 import discord
 from discord.ext import commands
+from threading import Thread
+
+
+from Browser import Browser
+
+
+async def get_token_browser(school_name: str, username: str, password: str, single_sign_on: bool, ctx, bot) -> str:
+    token = Browser().login_get_token(school_name, username, password, single_sign_on)
+    print(f"Token: {token}")
+    if len(token) == 0:
+        embed = discord.Embed(
+            title="Error, could not find token", description=f"Apologies, I was not able to find the token. Please try again or contact the bot administrator.", color=discord.Color.dark_red())
+        await ctx.author.send(embed=embed)
+    return token
 
 
 db = None
@@ -28,7 +42,7 @@ async def signup(ctx, *args):
         return await ctx.author.send(embed=discord.Embed(title="Error", description="Please only use the signup command in private", color=discord.Color.LIGHT_RED))
     if len(args) < 3:
         embed = discord.Embed(
-            title="Error, not enough arguments", description=f"Please provide your schoolname, username and password, usage: !signup <schoolname> <username> <password>", color=discord.Color.dark_red())
+            title="Error, not enough arguments", description=f"Please provide your schoolname, username, password and if we have to use single sign on or not, usage: !signup <schoolname> <username> <password> <sso 1 or 0>", color=discord.Color.dark_red())
         return await ctx.author.send(embed=embed)
     # First argument is the schoolname
     school_name = args[0]
@@ -39,12 +53,21 @@ async def signup(ctx, *args):
     # Third argument is the password
     password = args[2]
     print(f"Password: {password}")
+    # Fourth argument is SSO
+    sso = bool(args[3])
+    print(f"SSO: {sso}")
     print(args)
     embed = discord.Embed(
         title="New signup", description=f"Hi thank you for signing up for this service. The bot will try to log into Zermelo, please wait a moment...", color=discord.Color.red())
     await ctx.author.send(embed=embed)
+
+    # Get token
+    token = Thread(target=await get_token_browser, args=(
+        school_name, username, password, sso, ctx, bot))
+    token.start()
+
     # print(ctx.history)
-    messages = await ctx.channel.history(limit=200).flatten()
-    for msg in messages:
-        if msg.author.id != bot.user.id:
-            print(msg.content)
+    # messages = await ctx.channel.history(limit=200).flatten()
+    # for msg in messages:
+    #     if msg.author.id != bot.user.id:
+    #         print(msg.content)
