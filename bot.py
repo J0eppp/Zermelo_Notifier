@@ -1,19 +1,15 @@
 import discord
 from discord.ext import commands
-from threading import Thread
-
 
 from Browser import Browser
 
 
-async def get_token_browser(school_name: str, username: str, password: str, single_sign_on: bool, ctx, bot) -> str:
+def get_token_browser(school_name: str, username: str, password: str, single_sign_on: bool) -> dict:
     token = Browser().login_get_token(school_name, username, password, single_sign_on)
     print(f"Token: {token}")
     if len(token) == 0:
-        embed = discord.Embed(
-            title="Error, could not find token", description=f"Apologies, I was not able to find the token. Please try again or contact the bot administrator.", color=discord.Color.dark_red())
-        await ctx.author.send(embed=embed)
-    return token
+        return { "error": "Error, could not find token", "description": "Apologies, I was not able to find the token. Please try again or contact the bot administrator." }
+    return { "token": token }
 
 
 db = None
@@ -38,6 +34,7 @@ async def hello(ctx):
 # Command to sign up to the "service"
 @bot.command(name="signup", description="Sign up to the bot")
 async def signup(ctx, *args):
+    """Command to sign up to the "service"""
     if ctx.message.guild:
         return await ctx.author.send(embed=discord.Embed(title="Error", description="Please only use the signup command in private", color=discord.Color.LIGHT_RED))
     if len(args) < 3:
@@ -61,10 +58,9 @@ async def signup(ctx, *args):
         title="New signup", description=f"Hi thank you for signing up for this service. The bot will try to log into Zermelo, please wait a moment...", color=discord.Color.red())
     await ctx.author.send(embed=embed)
 
-    # Get token
-    token = Thread(target=await get_token_browser, args=(
-        school_name, username, password, sso, ctx, bot))
-    token.start()
+    result = get_token_browser(school_name, username, password, sso)
+    if result["token"] != None:
+        await ctx.author.send(result["token"])
 
     # print(ctx.history)
     # messages = await ctx.channel.history(limit=200).flatten()

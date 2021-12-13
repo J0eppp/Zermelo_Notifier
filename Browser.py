@@ -10,6 +10,7 @@ class Browser:
         self.driver = webdriver.Chrome()
 
     def login_get_token(self, schoolname: str, username: str, password: str, single_sign_on: bool) -> str:
+        print("Getting token...")
         self.get_portal(schoolname)
         self.login_portal(username, password, single_sign_on)
         return self.get_token()

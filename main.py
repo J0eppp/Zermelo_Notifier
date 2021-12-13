@@ -25,5 +25,5 @@ bot_loop.create_task(bot.run(token))
 bot_thread = Thread(target=bot_loop.run_forever)
 bot_thread.start()
 
-while True:
-    continue
+# while True:
+#     continue
