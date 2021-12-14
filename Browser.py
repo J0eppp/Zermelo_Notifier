@@ -2,6 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import UnexpectedAlertPresentException
 from time import sleep
 
 
@@ -46,7 +47,6 @@ class Browser:
         # This can take a long time, use a proper wait, wait maximum 30 seconds before throwing an error
         WebDriverWait(self.driver, 30).until(
             EC.presence_of_element_located((By.XPATH, '//*[@id="isc_H"]'))).click()
-        # self.driver.find_element(By.XPATH, '//*[@id="isc_H"]').click()
 
         # Click "Koppel externe applicatie"
         WebDriverWait(self.driver, 30).until(
@@ -61,6 +61,7 @@ class Browser:
             # Get the token again
             token = self.driver.find_element(
                 By.XPATH, '//*[@id="isc_88"]/table/tbody/tr/td').text
+
         return token
 
     def close(self):

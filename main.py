@@ -20,10 +20,12 @@ bot.db = db
 #     db.create_database()
 
 # Run the Discord Client
-bot_loop = asyncio.get_event_loop()
-bot_loop.create_task(bot.run(token))
-bot_thread = Thread(target=bot_loop.run_forever)
-bot_thread.start()
+# bot_loop = asyncio.get_event_loop()
+# bot_loop.create_task(bot.run(token))
+# bot_thread = Thread(target=bot_loop.run_forever)
+# bot_thread.start()
+
+bot.run(token)
 
 # while True:
 #     continue
