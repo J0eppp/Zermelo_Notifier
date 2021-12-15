@@ -1,9 +1,14 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
+
+import asyncio
+
+from typing import List
+from threading import Thread
 
 # Local imports
 from Browser import Browser
-from Queue import Queue
+# from Queue import Queue
 from Task import Task
 
 
@@ -21,13 +26,41 @@ db = None
 bot = commands.Bot(command_prefix="!", case_insensitive=True)
 
 
-queue = Queue()
+class Queue(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.queue: List[Task] = []
+        self.run.start()
+
+    @tasks.loop(seconds=0.5)
+    async def run(self):
+        if len(self.queue) == 0:
+            return
+
+        task = self.queue.pop(0)
+        browser = Browser()
+        result = {}
+
+        token = browser.login_get_token(
+            task.school_name, task.username, task.password, task.single_sign_on)
+        browser.close()
+        if len(token) == 0:
+            result["error"] = "Error, could not find token"
+            result["description"] = "Apologies, I was not able to find the token. Please try again or contact the bot administrator."
+        else:
+            result["token"] = token
+        print(token)
+        channel = await self.bot.fetch_channel(task.channel_id)
+        await channel.send(token)
+
+
+queue = Queue(bot)
 
 
 @bot.event
 async def on_ready():
     print("Bot is ready, starting the queue")
-    queue.start()
+    # queue.start()
     print("Started the queue")
 
 
@@ -64,7 +97,7 @@ async def signup(ctx: commands.Context, *args):
     await ctx.author.send(embed=embed)
 
     task = Task(school_name, username, password,
-                sso, bot, ctx.message.id)
+                sso, ctx.message.channel.id)
     print(f"Adding task {task} to queue")
     queue.queue.append(task)
 
