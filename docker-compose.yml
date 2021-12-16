@@ -1,0 +1,26 @@
+# version: "3"
+# services:
+#   postgres-db:
+#     image: postgres
+#     restart: always
+#     environment:
+#       POSTGRES_USER: "zermelo_notifier"
+#       POSTGRES_PASSWORD: "zermelo_notifier"
+
+#     ports:
+#       - "5000:5000"
+
+version: "3"
+services:
+    database:
+        image: postgres
+        env_file:
+            - .database.env
+
+#         volumes:
+#             - database-data:/var/lib/postgresql/zermelo_notifier/data/
+
+# volumes:
+#     database-data:
+#         external:
+#             name: zermelo_notifier_volume

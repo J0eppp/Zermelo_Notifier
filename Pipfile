@@ -6,7 +6,8 @@ name = "pypi"
 [packages]
 "zermelo.py" = "*"
 "discord.py" = "*"
-selenium = "*"
+sqlalchemy = "*"
+psycopg2-binary = "*"
 
 [dev-packages]
 autopep8 = "*"
