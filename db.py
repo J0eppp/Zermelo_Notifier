@@ -7,7 +7,6 @@ import os
 from zermelo import Client
 
 database_uri = os.getenv("DATABASE_URI")
-print(database_uri)
 engine = sa.create_engine(database_uri)
 SQLAlchemyBase = declarative_base()
 Session = sessionmaker(bind=engine)
@@ -16,13 +15,17 @@ Session = sessionmaker(bind=engine)
 class User(SQLAlchemyBase):
     __tablename__ = "user"
     id = sa.Column(sa.Integer, primary_key=True)
-    discord_id = sa.Column(sa.String, nullable=False)
+    discord_id = sa.Column(sa.String(512), nullable=False)
     date_registered = sa.Column(sa.DateTime, nullable=False)
-    zermelo_schoolname = sa.Column(sa.String, nullable=False)
-    zermelo_access_token = sa.Column(sa.String, nullable=False)
+    zermelo_schoolname = sa.Column(sa.String(64), nullable=False)
+    zermelo_access_token = sa.Column(sa.String(256), nullable=False)
 
     def get_client(self) -> Client:
         return Client(self.zermelo_schoolname)
+
+    @staticmethod
+    def get_user_by_discord_id(session, discord_id) -> "User":
+        return session.query(User).filter(User.discord_id == discord_id).first()
 
 
 SQLAlchemyBase.metadata.create_all(engine)

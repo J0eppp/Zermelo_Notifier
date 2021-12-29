@@ -4,10 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-"zermelo.py" = "*"
-"discord.py" = "*"
+"zermelo.py" = {path = "./../zermelo.py"}
+"py-cord" = "*"
 sqlalchemy = "*"
 psycopg2-binary = "*"
+mysqlclient = {path = "./mysqlclient-1.4.6-cp38-cp38-win_amd64.whl"}
+table2ascii = "*"
 
 [dev-packages]
 autopep8 = "*"
