@@ -1,26 +1,43 @@
+# # version: "3"
+# # services:
+# #   postgres-db:
+# #     image: postgres
+# #     restart: always
+# #     environment:
+# #       POSTGRES_USER: "zermelo_notifier"
+# #       POSTGRES_PASSWORD: "zermelo_notifier"
+
+# #     ports:
+# #       - "5000:5000"
+
 # version: "3"
 # services:
-#   postgres-db:
+#   database:
 #     image: postgres
-#     restart: always
+#     # env_file:
+#     #     - .database.env
 #     environment:
 #       POSTGRES_USER: "zermelo_notifier"
 #       POSTGRES_PASSWORD: "zermelo_notifier"
-
+#       POSTGRES_DB: "zermelo_notifier"
 #     ports:
-#       - "5000:5000"
+#       - "4000:4000"
 
+# #         volumes:
+# #             - database-data:/var/lib/postgresql/zermelo_notifier/data/
+
+# # volumes:
+# #     database-data:
+# #         external:
+# #             name: zermelo_notifier_volume
 version: "3"
 services:
-    database:
-        image: postgres
-        env_file:
-            - .database.env
+  postgres-db:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: zermelo_notifier
+      POSTGRES_PASSWORD: "zermelo_notifier123"
 
-#         volumes:
-#             - database-data:/var/lib/postgresql/zermelo_notifier/data/
-
-# volumes:
-#     database-data:
-#         external:
-#             name: zermelo_notifier_volume
+    ports:
+      - "25839:5432"

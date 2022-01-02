@@ -1,4 +1,5 @@
 from typing import List
+from enum import Enum
 
 import sqlalchemy as sa
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
@@ -9,6 +10,11 @@ import os
 from zermelo import Client
 from Lesson import Lesson
 
+
+class ReactionActions(Enum):
+    SIGNOFF = 0
+
+
 database_uri = os.getenv("DATABASE_URI")
 engine = sa.create_engine(database_uri)
 SQLAlchemyBase = declarative_base()
@@ -16,7 +22,7 @@ Session = sessionmaker(bind=engine)
 
 
 class User(SQLAlchemyBase):
-    __tablename__ = "user"
+    __tablename__ = "users"
     id = sa.Column(sa.Integer, primary_key=True)
     discord_id = sa.Column(sa.String(512), nullable=False)
     date_registered = sa.Column(sa.DateTime, nullable=False)
@@ -40,7 +46,20 @@ class User(SQLAlchemyBase):
 
     @staticmethod
     def get_user_by_discord_id(session, discord_id) -> "User":
-        return session.query(User).filter(User.discord_id == discord_id).first()
+        return session.query(User).filter(User.discord_id == str(discord_id)).first()
+
+
+class Reaction(SQLAlchemyBase):
+    __tablename__ = "reactions"
+    id = sa.Column(sa.Integer, primary_key=True)
+    message_id = sa.Column(sa.String(512), nullable=False)
+    action = sa.Column(sa.Enum(ReactionActions), nullable=False)
+    emoji = sa.Column(sa.String(256), nullable=False)
+    expires = sa.Column(sa.DateTime, nullable=True)
+
+    @staticmethod
+    def get_reaction_by_message_id(session, message_id) -> List["Reaction"]:
+        return session.query(Reaction).filter(Reaction.message_id == str(message_id)).all()
 
 
 SQLAlchemyBase.metadata.create_all(engine)

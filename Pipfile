@@ -7,7 +7,6 @@ name = "pypi"
 "zermelo.py" = {path = "./../zermelo.py"}
 sqlalchemy = "*"
 psycopg2-binary = "*"
-mysqlclient = {path = "./mysqlclient-1.4.6-cp38-cp38-win_amd64.whl"}
 table2ascii = "*"
 py-cord = "*"
 
