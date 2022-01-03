@@ -1,7 +1,12 @@
 import discord
-from discord.embeds import Embed
 from discord.ext import commands
+from discord.ext.commands.core import check
 from zermelo import Client
+
+import logging
+from typing import List
+
+from enum import Enum
 
 from table2ascii import table2ascii as t2a
 
@@ -12,13 +17,92 @@ import datetime
 from Lesson import Lesson
 
 from utils.iso_week import get_current_iso_week
+from utils.millis_to_datetime import millis_to_datetime
 
-from constants import WEEKDAYS
+from constants import WEEKDAYS, NO
 
+import asyncio
+from time import time
+import os
+
+discord_logger = logging.getLogger('discord')
+discord_logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(
+    filename=os.environ["LOG_PATH_DISCORD"], encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter(
+    '%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+discord_logger.addHandler(handler)
 
 bot = commands.Bot(command_prefix="!", case_insensitive=True)
 
-yesno = ["✅", "🚫"]
+logger = logging.getLogger("bot")
+
+
+class NotificationTypes(Enum):
+    CLASS_STARTS_SOON = 0
+
+
+# This method executes code every 10 seconds
+async def bot_loop():
+    start_time = None
+    end_time = None
+
+    def check_notification(user: User) -> dict:
+        lessons: List[Lesson] = user.get_lessons(get_current_iso_week())
+        for lesson in lessons:
+            start = datetime.datetime.utcfromtimestamp(int(lesson.start))
+            before = user.notify_before_start
+            notify_time = start - datetime.timedelta(minutes=before)
+            if user.last_notification_before_start == None:
+                user.last_notification_before_start = datetime.datetime(
+                    1970, 1, 1)
+            print(f"last_notif: {user.last_notification_before_start}")
+            print(f"notify_time: {notify_time}")
+            print(f"start: {start}")
+
+            if user.last_notification_before_start < notify_time < start > datetime.datetime.now():
+                # Send notification
+                return {"lesson": lesson, "notification_type": NotificationTypes.CLASS_STARTS_SOON}
+
+        return None
+
+    while True:
+        start_time = time()
+        logger.info("Running bot_loop()")
+        # Check if we need to send a notification to someone
+        session = Session()
+        for user in User.get_users(session):
+            check = check_notification(user)
+            if check == None:
+                continue
+            # We need to notify, check variable contains info about the notification
+            print("NOTIFYING USER")
+            print(check)
+            d_user = await bot.fetch_user(user.discord_id)
+            lesson: Lesson = check["lesson"]
+            title = None
+            description = None
+            color = None
+            if check["notification_type"] == NotificationTypes.CLASS_STARTS_SOON:
+                title = "Class starts soon"
+                description = f"Your {', '.join(lesson.subjects)} lesson{'s' if len(lesson.subjects) > 1 else ''} starts at {datetime.datetime.strftime(datetime.datetime.utcfromtimestamp(int(lesson.start)), '%H:%M')} in {', '.join(lesson.locations)}"
+                color = discord.Color.orange()
+            embed = discord.Embed(
+                title=title, description=description, color=color)
+            await d_user.send(embed=embed)
+            user.last_notification_before_start = datetime.datetime.now()
+            db.merge(session, user)
+        session.close()
+        end_time = time()
+        delay = 60 - (end_time - start_time)
+        await asyncio.sleep(delay)
+
+
+@bot.event
+async def on_ready():
+    print("Bot is ready")
+    logger.info("Bot is ready")
+    bot.loop.create_task(bot_loop())
 
 
 # Event for when a reaction is added
@@ -26,17 +110,16 @@ yesno = ["✅", "🚫"]
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
     if payload.user_id == bot.user.id:
         return
-    await bot.get_channel(payload.channel_id).send(f"Reaction added by {payload.user_id}")
     session = Session()
     reactions = db.Reaction.get_reaction_by_message_id(
         session, payload.message_id)
     if len(reactions) == 0 or reactions == None:
         return
     for reaction in reactions:
-        if reaction.expires != None:
-            if reaction.expires < datetime.datetime.now():
-                return await bot.get_channel(payload.channel_id).send(embed=discord.Embed(title="Request expired", description="This request expired, please request again", color=discord.Color.red()))
         if str(reaction.emoji) == str(payload.emoji):
+            if reaction.expires != None:
+                if reaction.expires < datetime.datetime.now():
+                    return await bot.get_channel(payload.channel_id).send(embed=discord.Embed(title="Request expired", description="This request expired, please request again", color=discord.Color.red()))
             if reaction.action == ReactionActions.SIGNOFF:
                 # Remove all data of the user
                 # Get the user object
@@ -44,30 +127,19 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent):
                 user = User.get_user_by_discord_id(session, payload.user_id)
                 if user == None:
                     session.close()
-                    # TODO send message
-                    return
+                    return await bot.get_channel(payload.channel_id).send(embed=discord.Embed(title="Not authorized to do this", description="You are not athorized to perform this action", color=discord.Color.dark_red()))
 
                 db.delete(session, user, commit=False)
                 db.delete(session, reaction, commit=False)
                 session.commit()
                 session.close()
-                return await bot.get_channel(payload.channel_id).send(embed=discord.Embed(title="You signed off", description="You signed off successfully, use !signon to sign back on!", color=discord.Color.magenta()))
+                return await bot.get_channel(payload.channel_id).send(embed=discord.Embed(title="You signed off", description="You signed off successfully, use !signup to sign back on!", color=discord.Color.magenta()))
 
-
-@bot.event
-async def on_ready():
-    print("Bot is ready")
-
-
-@bot.command(name="hello", description="Greet the user!")
-async def hello(ctx: commands.Context):
-    if not ctx.message.guild:
-        await ctx.send(f"Hello!")
-    else:
-        await ctx.send(f"Hello {ctx.author.name}!")
-
+    session.close()
 
 # Command to sign up to the "service"
+
+
 @bot.command(name="signup", description="Sign up to the bot")
 async def signup(ctx: commands.Context, *args):
     """Command to sign up to the "service"""
@@ -98,7 +170,7 @@ async def signup(ctx: commands.Context, *args):
 
     # Create database object
     user = db.User(discord_id=ctx.author.id, date_registered=datetime.date.today(
-    ), zermelo_schoolname=schoolname, zermelo_access_token=access_token, zermelo_user_code=usercode)
+    ), zermelo_schoolname=schoolname, zermelo_access_token=access_token, zermelo_user_code=usercode, notify_before_start=15)
 
     db.insert(session, user)
     session.close()
@@ -108,6 +180,7 @@ async def signup(ctx: commands.Context, *args):
     await ctx.author.send(embed=embed)
     client = None
     user = None
+    logger.info("User signed up")
     return
 
 
@@ -132,10 +205,6 @@ async def today(ctx: commands.Context, *args):
     # Get the appointments of this week
     appointments = client.get_liveschedule(access_token, iso_date, usercode)[
         "response"]["data"][0]["appointments"]
-
-    def millis_to_datetime(millis) -> datetime.datetime:
-        return datetime.datetime.fromtimestamp(
-            millis / 1000.0, tz=datetime.timezone.utc)
 
     lessons_today = []
     for appointment in appointments:
@@ -197,10 +266,10 @@ async def signoff(ctx: commands.Context, *args):
     if user == None:
         return await ctx.send(embed=discord.Embed(title="You are not signed up", description="You are not signed up to the bot so you cannot sign off either", color=discord.Color.dark_red()))
 
-    signoff_message = await ctx.send(embed=discord.Embed(title="Sign off", description=f"Please sign off using the {yesno[1]} emoji, this request expires after 60 seconds", color=discord.Color.dark_red()))
+    signoff_message = await ctx.send(embed=discord.Embed(title="Sign off", description=f"Please sign off using the {NO} emoji, this request expires after 60 seconds", color=discord.Color.dark_red()))
     reaction = db.Reaction(message_id=signoff_message.id,
-                           action=db.ReactionActions.SIGNOFF, emoji=yesno[1], expires=datetime.datetime.now() + datetime.timedelta(minutes=1))
+                           action=db.ReactionActions.SIGNOFF, emoji=NO, expires=datetime.datetime.now() + datetime.timedelta(minutes=1))
     db.insert(session, reaction)
-    # await signoff_message.add_reaction("\N{THUMBS UP SIGN}")
-    await signoff_message.add_reaction(yesno[1])
+    await signoff_message.add_reaction(NO)
     session.close()
+    return

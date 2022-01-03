@@ -29,6 +29,9 @@ class User(SQLAlchemyBase):
     zermelo_schoolname = sa.Column(sa.String(64), nullable=False)
     zermelo_access_token = sa.Column(sa.String(256), nullable=False)
     zermelo_user_code = sa.Column(sa.String(256), nullable=False)
+    # Notification settings
+    notify_before_start = sa.Column(sa.Integer, nullable=True)
+    last_notification_before_start = sa.Column(sa.DateTime, nullable=True)
 
     client: Client = None
 
@@ -47,6 +50,10 @@ class User(SQLAlchemyBase):
     @staticmethod
     def get_user_by_discord_id(session, discord_id) -> "User":
         return session.query(User).filter(User.discord_id == str(discord_id)).first()
+
+    @staticmethod
+    def get_users(session) -> List["User"]:
+        return session.query(User).all()
 
 
 class Reaction(SQLAlchemyBase):
